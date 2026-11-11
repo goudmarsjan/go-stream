@@ -32,14 +32,18 @@ export default async function handler(req, res) {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
+    const timeout = setTimeout(() => controller.abort(), 55000);
     let upstream;
     try {
       upstream = await fetch(url.toString(), {
         method: 'GET',
-        redirect: 'error',
+        redirect: 'follow',
         signal: controller.signal,
-        headers: { 'Accept': 'application/x-mpegURL, audio/x-mpegurl, text/plain, */*' }
+        headers: {
+          'Accept': 'application/x-mpegURL, audio/x-mpegurl, text/plain, */*',
+          'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
+          'Connection': 'keep-alive'
+        }
       });
     } finally {
       clearTimeout(timeout);
@@ -50,12 +54,12 @@ export default async function handler(req, res) {
     }
 
     const length = Number(upstream.headers.get('content-length') || 0);
-    if (length > 15 * 1024 * 1024) {
-      return res.status(413).json({ error: 'De playlist is groter dan 15 MB en kan niet via deze functie worden geladen.' });
+    if (length > 40 * 1024 * 1024) {
+      return res.status(413).json({ error: 'De playlist is groter dan 40 MB en kan niet via deze functie worden geladen.' });
     }
 
     const playlist = await upstream.text();
-    if (playlist.length > 15 * 1024 * 1024) {
+    if (playlist.length > 40 * 1024 * 1024) {
       return res.status(413).json({ error: 'De playlist is groter dan 15 MB en kan niet via deze functie worden geladen.' });
     }
     if (!playlist.trimStart().startsWith('#EXTM3U')) {
