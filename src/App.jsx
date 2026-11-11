@@ -63,18 +63,21 @@ function App() {
     if (!url.trim()) { setError('Vul eerst je M3U-playlistlink in.'); return; }
     setLoading(true); setError('');
     try {
-      const response = await fetch(url.trim());
-      if (!response.ok) throw new Error('De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
-      const text = await response.text();
+      const response = await fetch('/api/playlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playlistUrl: url.trim() })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
+      const text = payload.playlist || '';
       const parsed = parseM3U(text);
       if (!parsed.length) throw new Error('Geen streams gevonden. Controleer de link of het M3U-formaat.');
       setItems(parsed); setPlaylistUrl(url.trim()); setDraftUrl(url.trim());
       localStorage.setItem('gostream_playlist_url', url.trim());
       setCategory('Alles'); setActiveTab('home'); setShowSettings(false);
     } catch (e) {
-      setError(e.message.includes('Failed to fetch') || e instanceof TypeError
-        ? 'De provider blokkeert mogelijk browser-toegang (CORS). Dan hebben we een kleine beveiligde serverproxy nodig.'
-        : e.message);
+      setError(e.message || 'Er ging iets mis bij het ophalen van de playlist.');
     } finally { setLoading(false); }
   }
   function toggleFavorite(item) {
@@ -104,7 +107,7 @@ function App() {
         </>}
       </main>
     </div>
-    {showSettings&&<div className="modal-backdrop" onClick={()=>setShowSettings(false)}><section className="settings-modal" onClick={e=>e.stopPropagation()}><div className="modal-heading"><div><span className="eyebrow">VERBINDEN</span><h2>Playlist instellen</h2></div><button className="icon-btn" onClick={()=>setShowSettings(false)}><X/></button></div><p className="modal-description">Plak de M3U Plus-link van je IPTV-provider. Je link wordt lokaal op dit toestel bewaard.</p><label htmlFor="playlist">M3U-playlist URL</label><input id="playlist" className="url-input" type="url" value={draftUrl} onChange={e=>setDraftUrl(e.target.value)} placeholder="http://provider/get.php?username=..." autoComplete="off"/>{error&&<p className="error-msg">{error}</p>}<button className="primary-btn full-btn" disabled={loading} onClick={()=>loadPlaylist()}>{loading?'Playlist laden...':'Playlist verbinden'}</button><p className="privacy-note">De playlistlink bevat vaak een wachtwoord. Deel hem niet en commit hem nooit naar GitHub. Gebruik alleen streams waarvoor je toestemming hebt.</p></section></div>}
+    {showSettings&&<div className="modal-backdrop" onClick={()=>setShowSettings(false)}><section className="settings-modal" onClick={e=>e.stopPropagation()}><div className="modal-heading"><div><span className="eyebrow">VERBINDEN</span><h2>Playlist instellen</h2></div><button className="icon-btn" onClick={()=>setShowSettings(false)}><X/></button></div><p className="modal-description">Plak je M3U Plus-link. GO STREAM haalt de playlist via een beveiligde serverfunctie op zodat browser-CORS geen probleem vormt.</p><label htmlFor="playlist">M3U-playlist URL</label><input id="playlist" className="url-input" type="url" value={draftUrl} onChange={e=>setDraftUrl(e.target.value)} placeholder="http://provider/get.php?username=..." autoComplete="off"/>{error&&<p className="error-msg">{error}</p>}<button className="primary-btn full-btn" disabled={loading} onClick={()=>loadPlaylist()}>{loading?'Playlist laden...':'Playlist verbinden'}</button><p className="privacy-note">Je playlistlink wordt op dit toestel bewaard. Hij wordt niet in GitHub-code opgeslagen. Gebruik alleen streams waarvoor je toestemming hebt. Verander je wachtwoord als je het eerder publiek hebt gedeeld.</p></section></div>}
     <footer>GO STREAM <span>•</span> JOUW PERSOONLIJKE STREAMINGPLEK</footer>
   </div>;
 }
