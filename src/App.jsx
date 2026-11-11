@@ -78,9 +78,11 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ playlistUrl: url.trim() })
         });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || 'De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
-        text = payload.playlist || '';
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
+        }
+        text = await response.text();
       }
       const parsed = parseM3U(text);
       if (!parsed.length) throw new Error('Geen streams gevonden. Controleer de link of het M3U-formaat.');
