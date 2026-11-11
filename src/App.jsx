@@ -33,24 +33,57 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [playbackError, setPlaybackError] = useState('');
   const videoRef = useRef(null);
   const playerRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem('gostream_favorites', JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => {
     if (!selected || !videoRef.current) return;
     if (playerRef.current) { playerRef.current.destroy(); playerRef.current = null; }
     const video = videoRef.current;
-    if (mpegts.isSupported() && /\.ts(\?|$)|output=ts/i.test(selected.url)) {
-      const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: selected.url }, { enableWorker: true, enableStashBuffer: true });
-      playerRef.current = player; player.attachMediaElement(video); player.load();
-      player.play().catch(() => {});
+    setPlaybackError('');
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+
+    // VOD items must not be opened in live mode, even when the URL ends in .ts.
+    const group = selected.group || '';
+    const isLive = activeTab === 'live' || (!/series|serie|movie|film|vod/i.test(group) && selected.type !== 'series');
+    const isTransportStream = /\\.ts(?:$|[?#])|[?&]output=ts(?:&|$)/i.test(selected.url);
+
+    if (isTransportStream && mpegts.isSupported()) {
+      const player = mpegts.createPlayer(
+        { type: 'mpegts', isLive, url: selected.url },
+        {
+          enableWorker: false,
+          enableStashBuffer: isLive,
+          stashInitialSize: 128,
+          lazyLoad: !isLive,
+          lazyLoadMaxDuration: 180,
+          liveBufferLatencyChasing: isLive,
+          autoCleanupSourceBuffer: true,
+          autoCleanupMaxBackwardDuration: 60,
+          autoCleanupMinBackwardDuration: 30
+        }
+      );
+      playerRef.current = player;
+      player.on(mpegts.Events.ERROR, (type, detail, info) => {
+        setPlaybackError('Streamfout: ' + detail + (info?.code ? ' / ' + info.code : '') + '. Mogelijk ondersteunt de provider dit streamformaat niet in de browser.');
+      });
+      player.attachMediaElement(video);
+      player.load();
+      player.play().catch(() => setPlaybackError('Druk op Afspelen om de video te starten.'));
     } else {
       video.src = selected.url;
-      video.play().catch(() => {});
+      video.load();
+      video.play().catch(() => setPlaybackError('Deze stream kan niet rechtstreeks door de browser worden afgespeeld.'));
+      video.onerror = () => setPlaybackError('Videoformaat of stream niet ondersteund (fout ' + (video.error?.code || 'onbekend') + ').');
     }
-    return () => { if (playerRef.current) { playerRef.current.destroy(); playerRef.current = null; } };
-  }, [selected]);
+    return () => {
+      video.pause();
+      if (playerRef.current) { playerRef.current.destroy(); playerRef.current = null; }
+    };
+  }, [selected, activeTab]);
   const groups = useMemo(() => ['Alles', ...new Set(items.map(x => x.group))], [items]);
   const filtered = useMemo(() => items.filter(x => {
     const tabMatch = activeTab === 'favorites' ? favorites.includes(x.key) :
@@ -108,7 +141,7 @@ function App() {
     <div className="layout">
       <aside className="sidebar">{tabs.map(([id,label,Icon])=><button key={id} className={'nav-item '+(activeTab===id?'active':'')} onClick={()=>{setActiveTab(id);setSelected(null);setCategory('Alles')}}><Icon size={19}/><span>{label}</span></button>)}<div className="sidebar-bottom"><span className="status-dot"/>{items.length ? items.length+' streams geladen' : 'Geen playlist geladen'}</div></aside>
       <main className="main">
-        {selected ? <section className="player-page"><button className="back-btn" onClick={()=>setSelected(null)}><ChevronLeft size={18}/> Terug naar overzicht</button><div className="video-wrap"><video ref={videoRef} controls autoPlay playsInline /></div><div className="player-info"><div><h1>{selected.name}</h1><p>{selected.group}</p></div><button className={'favorite-btn '+(favorites.includes(selected.key)?'chosen':'')} onClick={()=>toggleFavorite(selected)}><Heart size={19}/></button></div></section> :
+        {selected ? <section className="player-page"><button className="back-btn" onClick={()=>setSelected(null)}><ChevronLeft size={18}/> Terug naar overzicht</button><div className="video-wrap"><video ref={videoRef} controls autoPlay playsInline />{playbackError && <div className="playback-error">{playbackError}</div>}</div><div className="player-info"><div><h1>{selected.name}</h1><p>{selected.group}</p></div><button className={'favorite-btn '+(favorites.includes(selected.key)?'chosen':'')} onClick={()=>toggleFavorite(selected)}><Heart size={19}/></button></div></section> :
         <>
           <section className="hero"><div className="hero-copy"><span className="eyebrow">JOUW ENTERTAINMENT. ÉÉN PLEK.</span><h1>Vanavond kijk je<br/><em>iets goeds.</em></h1><p>Je films, series en live-tv overzichtelijk bij elkaar.</p><button className="primary-btn" onClick={()=>items.length?setActiveTab('movies'):setShowSettings(true)}><Play size={17} fill="currentColor"/> {items.length?'Ontdek je aanbod':'Playlist toevoegen'}</button></div><div className="hero-art"><div className="orb orb-one"/><div className="orb orb-two"/><div className="poster-stack"><div className="poster p1">CINEMA</div><div className="poster p2">SERIES</div><div className="poster p3"><Play size={32}/></div></div></div></section>
           {!items.length ? <section className="empty-state"><div className="empty-icon"><Link2 size={27}/></div><h2>Verbind je playlist</h2><p>Voeg je M3U Plus-link toe om je beschikbare streams in GO STREAM te laden.</p><button className="primary-btn" onClick={()=>setShowSettings(true)}>Playlist instellen</button></section> :
