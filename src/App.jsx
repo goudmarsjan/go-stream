@@ -13,9 +13,13 @@ function parseM3U(text) {
     if (line.startsWith('#EXTINF')) {
       const name = line.split(',').slice(1).join(',').trim() || 'Onbekende stream';
       const attr = (key) => line.match(new RegExp(key + '="([^"]*)"','i'))?.[1] || '';
-      meta = { name, group: attr('group-title') || 'Overig', logo: attr('tvg-logo'), id: attr('tvg-id'), type: /series|serie/i.test(attr('group-title')) ? 'series' : 'live' };
+      meta = { name, group: attr('group-title') || 'Overig', logo: attr('tvg-logo'), id: attr('tvg-id'), type: /series|serie|movie|film|vod/i.test(attr('group-title')) || /\bS\d{1,2}E\d{1,2}\b/i.test(name) ? 'series' : 'live' };
     } else if (!line.startsWith('#') && meta) {
-      items.push({ ...meta, url: line, key: line + items.length });
+      const pathIsVod = /\/(?:series|movie|movies|vod)\//i.test(line);
+      const pathIsLive = /\/live\//i.test(line);
+      const looksLikeEpisode = /\bS\d{1,2}E\d{1,2}\b/i.test(meta.name);
+      const type = pathIsVod || looksLikeEpisode ? 'series' : pathIsLive ? 'live' : meta.type;
+      items.push({ ...meta, type, url: line, key: line + items.length });
       meta = null;
     }
   }
@@ -46,12 +50,14 @@ function App() {
     video.removeAttribute('src');
     video.load();
 
-    // VOD items must not be opened in live mode, even when the URL ends in .ts.
+    // Determine VOD/live from M3U metadata, episode title and Xtream URL path.
     const group = selected.group || '';
-    const looksLikeEpisode = /\\bS\\d{1,2}E\\d{1,2}\\b|\\bseason\\s*\\d+|\\bepisode\\s*\\d+/i.test(selected.name || '');
-    const isVOD = selected.type === 'series' || /series|serie|movie|film|vod/i.test(group) || looksLikeEpisode;
-    const isLive = !isVOD && activeTab === 'live';
-    const isTransportStream = /\\.ts(?:$|[?#])|[?&]output=ts(?:&|$)/i.test(selected.url);
+    const looksLikeEpisode = /\bS\d{1,2}E\d{1,2}\b|\bseason\s*\d+|\bepisode\s*\d+/i.test(selected.name || '');
+    const urlIsVod = /\/(?:series|movie|movies|vod)\//i.test(selected.url);
+    const urlIsLive = /\/live\//i.test(selected.url);
+    const isVOD = selected.type === 'series' || /series|serie|movie|film|vod/i.test(group) || looksLikeEpisode || urlIsVod;
+    const isLive = !isVOD && (urlIsLive || activeTab === 'live');
+    const isTransportStream = /\.ts(?:$|[?#])|[?&]output=ts(?:&|$)/i.test(selected.url);
 
     if (isTransportStream && mpegts.isSupported()) {
       const player = mpegts.createPlayer(
