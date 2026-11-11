@@ -63,14 +63,25 @@ function App() {
     if (!url.trim()) { setError('Vul eerst je M3U-playlistlink in.'); return; }
     setLoading(true); setError('');
     try {
-      const response = await fetch('/api/playlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playlistUrl: url.trim() })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
-      const text = payload.playlist || '';
+      // In the native Android app, Capacitor patches fetch to use the device's
+      // native HTTP stack. This avoids browser CORS and Vercel-origin restrictions.
+      // The hosted website keeps using the small server endpoint as a fallback.
+      const nativeApp = Boolean(window.Capacitor?.isNativePlatform?.());
+      let text = '';
+      if (nativeApp) {
+        const response = await fetch(url.trim(), { method: 'GET', cache: 'no-store' });
+        if (!response.ok) throw new Error('De IPTV-provider antwoordde met HTTP ' + response.status + '.');
+        text = await response.text();
+      } else {
+        const response = await fetch('/api/playlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playlistUrl: url.trim() })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'De playlist kon niet worden opgehaald (HTTP ' + response.status + ').');
+        text = payload.playlist || '';
+      }
       const parsed = parseM3U(text);
       if (!parsed.length) throw new Error('Geen streams gevonden. Controleer de link of het M3U-formaat.');
       setItems(parsed); setPlaylistUrl(url.trim()); setDraftUrl(url.trim());
