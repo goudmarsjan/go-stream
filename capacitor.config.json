@@ -1,0 +1,10 @@
+{
+  "appId": "com.goudmarsjan.gostream",
+  "appName": "GO STREAM",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
