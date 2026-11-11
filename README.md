@@ -1,30 +1,27 @@
 # GO STREAM
 
-Een responsieve M3U/M3U Plus webspeler voor persoonlijke playlists.
+Een responsieve M3U/M3U Plus-speler en Android-app.
 
-## Starten
+## Webversie
 ```bash
 npm install
 npm run dev
 ```
 
-## Functies
-- M3U-playlist URL invoeren en lokaal op het toestel bewaren.
-- Playlist ophalen via een Vercel serverfunctie om browser-CORS bij het ophalen van de playlist te vermijden.
-- Basis M3U-parser voor streamnaam, groep en logo.
-- Zoeken, categorieën en favorieten.
-- MPEG-TS playback via mpegts.js wanneer de browser Media Source Extensions en de streamprovider browsertoegang ondersteunen.
-- Responsieve interface voor mobiel, tablet en desktop.
+## Android APK bouwen
+De GitHub Actions-workflow **Build GO STREAM Android APK** bouwt een installeerbare debug-APK. Start de workflow handmatig via GitHub Actions of push een wijziging aan de app.
+
+Na een geslaagde workflow vind je de APK bij **Actions → Build GO STREAM Android APK → Artifacts → go-stream-android**.
+
+## Android-netwerk
+De native Android-build gebruikt Capacitor's native HTTP-fetch patch. Daardoor worden playlistaanvragen rechtstreeks vanaf het Android-toestel gedaan in plaats van vanaf Vercel; browser-CORS is dan niet van toepassing. HTTP-cleartext is ingeschakeld omdat de geconfigureerde provider een http-playlist gebruikt.
 
 ## Beperkingen
-- De serverfunctie laat alleen de host `link.reseller-online.net` toe en accepteert alleen `get.php` playlistlinks. Dit voorkomt dat de endpoint als algemene URL-proxy wordt misbruikt.
-- Sommige providers weigeren verbindingen vanaf cloudservers. In dat geval kan de playlist nog steeds niet worden opgehaald.
-- De serverfunctie haalt alleen de playlist op. De afzonderlijke video-streams lopen nog rechtstreeks vanaf de provider; stream-CORS, browsercodec-ondersteuning en providerbeperkingen kunnen playback verhinderen.
-- Volledige Xtream Codes VOD-integratie (films, series, seizoenen en afleveringen), streamproxy en Chromecast/AirPlay/native tv-ondersteuning zijn nog niet inbegrepen.
-- Gebruik alleen playlists en streams waarvoor je toestemming hebt.
+- De webversie blijft de serverendpoint gebruiken en kan nog steeds time-outs krijgen als de provider verbindingen vanaf cloudservers weigert.
+- Native directe playlistophaling lost geen ongeldige accountgegevens, providerblokkades of netwerkproblemen op.
+- Streamafspelen hangt nog af van Android WebView/MSE, codecs en de provider. Native ExoPlayer-integratie en Chromecast zijn vervolgstappen.
+- Dit is momenteel een debug-APK, niet ondertekend voor Play Store-publicatie.
+- Gebruik alleen streams waarvoor je toestemming hebt.
 
 ## Veiligheid
-- Zet nooit IPTV-gebruikersnamen of wachtwoorden in broncode, GitHub of publieke screenshots.
-- De playlistlink wordt lokaal in de browser bewaard; gebruik dit prototype niet op gedeelde toestellen.
-- Als je credentials publiek hebt gedeeld, wijzig dan je IPTV-wachtwoord bij je provider.
-- De serverfunctie staat alleen verzoeken toe naar de expliciet ingestelde providerhost en logt de playlistinhoud niet.
+Bewaar IPTV-gegevens niet in broncode, GitHub of publieke screenshots. Als je gegevens publiek zichtbaar waren, wijzig je wachtwoord bij de provider.
