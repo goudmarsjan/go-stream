@@ -48,7 +48,9 @@ function App() {
 
     // VOD items must not be opened in live mode, even when the URL ends in .ts.
     const group = selected.group || '';
-    const isLive = activeTab === 'live' || (!/series|serie|movie|film|vod/i.test(group) && selected.type !== 'series');
+    const looksLikeEpisode = /\\bS\\d{1,2}E\\d{1,2}\\b|\\bseason\\s*\\d+|\\bepisode\\s*\\d+/i.test(selected.name || '');
+    const isVOD = selected.type === 'series' || /series|serie|movie|film|vod/i.test(group) || looksLikeEpisode;
+    const isLive = !isVOD && activeTab === 'live';
     const isTransportStream = /\\.ts(?:$|[?#])|[?&]output=ts(?:&|$)/i.test(selected.url);
 
     if (isTransportStream && mpegts.isSupported()) {
