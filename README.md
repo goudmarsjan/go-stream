@@ -25,3 +25,6 @@ De native Android-build gebruikt Capacitor's native HTTP-fetch patch. Daardoor w
 
 ## Veiligheid
 Bewaar IPTV-gegevens niet in broncode, GitHub of publieke screenshots. Als je gegevens publiek zichtbaar waren, wijzig je wachtwoord bij de provider.
+
+
+Android-build workflow updated to run on documentation and app changes.
